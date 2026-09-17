@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>기억의 서랍</title>
+<style>
+:root{font-family:system-ui,-apple-system,'Noto Sans KR',sans-serif;color:#18352f;background:#f5f2e9}*{box-sizing:border-box}body{margin:0}.wrap{max-width:760px;margin:auto;padding:18px 16px 96px}header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}h1{font-size:26px;margin:0}.sub{font-size:13px;color:#66746f}.card{background:#fff;border-radius:18px;padding:16px;box-shadow:0 8px 28px #00000012;margin-bottom:14px}.row{display:flex;gap:10px;flex-wrap:wrap}button,.btn{border:0;border-radius:14px;padding:13px 16px;font-weight:700;font-size:16px;background:#2d7f73;color:#fff}.secondary{background:#e8efed;color:#235b52}.danger{background:#9c4545}textarea,input{width:100%;border:1px solid #ced9d5;border-radius:14px;padding:14px;font-size:17px;background:#fff}textarea{min-height:132px;resize:vertical}.muted{color:#73807c;font-size:14px}.memory{padding:14px 0;border-top:1px solid #edf0ee}.memory:first-child{border-top:0}.memory p{white-space:pre-wrap;margin:8px 0}.meta{font-size:12px;color:#76837f}.empty{text-align:center;padding:28px 8px;color:#71807a}.pill{display:inline-block;background:#e8efed;padding:6px 10px;border-radius:999px;font-size:12px}.footer{position:fixed;left:0;right:0;bottom:0;background:#ffffffed;border-top:1px solid #dfe6e3;padding:10px 14px;text-align:center;font-size:12px;color:#687772;backdrop-filter:blur(10px)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div><div class="sub">내 경험을 다시 꺼내는 곳</div><h1>기억의 서랍</h1></div><span class="pill">V1.3</span></header>
+<section class="card">
+  <h2 style="margin-top:0">새 기억</h2>
+  <textarea id="memo" placeholder="직접 입력하거나 아래 마이크 버튼을 눌러 말씀하세요."></textarea>
+  <div class="row" style="margin-top:10px">
+    <button onclick="speech('memo')">🎙 말로 입력</button>
+    <button class="secondary" onclick="saveMemo()">저장</button>
+    <button class="secondary" onclick="document.getElementById('memo').value=''">지우기</button>
+  </div>
+  <div id="status" class="muted" style="margin-top:10px">기억은 이 휴대폰 안에 저장됩니다.</div>
+</section>
+<section class="card">
+  <h2 style="margin-top:0">기억 찾기</h2>
+  <input id="search" placeholder="검색어 입력 또는 마이크로 검색" oninput="render()" />
+  <div class="row" style="margin-top:10px"><button onclick="speech('search')">🎙 말로 찾기</button><button class="secondary" onclick="document.getElementById('search').value='';render()">전체 보기</button></div>
+</section>
+<section class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 style="margin:0">저장된 기억</h2><span id="count" class="muted"></span></div><div id="list"></div></section>
+<section class="card">
+  <h2 style="margin-top:0">백업과 복원</h2>
+  <div class="row"><button class="secondary" onclick="backup()">백업 저장</button><label class="btn secondary" for="restore">백업 복원</label><input id="restore" type="file" accept="application/json" hidden /></div>
+  <p class="muted">백업 파일은 다운로드/기억의서랍 폴더에 저장됩니다.</p>
+</section>
+</div>
+<div class="footer">기억의 서랍 · 음성입력은 휴대폰의 한국어 음성인식 기능을 사용합니다.</div>
+<script>
+const KEY='memoryDrawer.v13';
+let memories=load();
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch{return []}}
+function persist(){localStorage.setItem(KEY,JSON.stringify(memories))}
+function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function nowText(iso){try{return new Intl.DateTimeFormat('ko-KR',{dateStyle:'medium',timeStyle:'short'}).format(new Date(iso))}catch{return ''}}
+function setStatus(t){document.getElementById('status').textContent=t}
+function saveMemo(){const el=document.getElementById('memo');const text=el.value.trim();if(!text){setStatus('저장할 내용을 입력해 주세요.');return}const iso=new Date().toISOString();memories.unshift({id:Date.now()+'-'+Math.random().toString(16).slice(2),text,createdAt:iso});persist();el.value='';setStatus('기억을 저장했습니다.');render()}
+function removeMemo(id){if(!confirm('이 기억을 삭제할까요?'))return;memories=memories.filter(m=>m.id!==id);persist();render()}
+function render(){const q=document.getElementById('search').value.trim().toLowerCase();const rows=memories.filter(m=>!q||m.text.toLowerCase().includes(q));document.getElementById('count').textContent=`${rows.length}개`;document.getElementById('list').innerHTML=rows.length?rows.map(m=>`<article class="memory"><div class="meta">${esc(nowText(m.createdAt))}</div><p>${esc(m.text)}</p><button class="danger" style="font-size:13px;padding:9px 12px" onclick="removeMemo('${m.id}')">삭제</button></article>`).join(''):'<div class="empty">아직 저장된 기억이 없습니다.</div>'}
+function speech(target){if(window.MemoryDrawerNative&&MemoryDrawerNative.startSpeech){setStatus('음성인식을 시작합니다.');MemoryDrawerNative.startSpeech(target)}else{setStatus('이 설치형 앱에서만 음성인식을 사용할 수 있습니다.')}}
+window.nativeSpeechResult=function(target,text){if(target==='search'){document.getElementById('search').value=text;render();setStatus('음성 검색어를 입력했습니다.')}else{const el=document.getElementById('memo');el.value=(el.value?el.value+' ':'')+text;setStatus('음성을 글자로 바꿨습니다.')}}
+window.nativeSpeechError=function(msg){setStatus(msg||'음성인식을 사용할 수 없습니다.')}
+function backup(){const obj={app:'기억의 서랍',version:'1.3',exportedAt:new Date().toISOString(),memories};const text=JSON.stringify(obj,null,2);const filename=`기억의서랍_백업_${new Date().toISOString().slice(0,10)}.json`;if(window.MemoryDrawerNative&&MemoryDrawerNative.saveBackup)MemoryDrawerNative.saveBackup(filename,text);else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=filename;a.click()}}
+document.getElementById('restore').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{const j=JSON.parse(await f.text());const arr=Array.isArray(j)?j:j.memories;if(!Array.isArray(arr))throw 0;if(!confirm(`${arr.length}개의 기억을 복원할까요?`))return;const ids=new Set(memories.map(m=>m.id));for(const m of arr){const id=m.id||Date.now()+'-'+Math.random().toString(16).slice(2);if(!ids.has(id))memories.push({id,text:String(m.text||''),createdAt:m.createdAt||new Date().toISOString()})}memories.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));persist();render();setStatus('백업을 복원했습니다.')}catch{setStatus('올바른 백업 파일이 아닙니다.')}e.target.value=''})
+render();
+</script>
+</body></html>
