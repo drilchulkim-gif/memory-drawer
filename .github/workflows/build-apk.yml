@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: memory-drawer-release
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,8 +47,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest --cleanup-tag --yes 2>/dev/null || true
-          gh release create latest memory-drawer.apk \
-            --title "기억의 서랍 V1.3" \
-            --notes "Android 설치용 최신 APK입니다. memory-drawer.apk를 내려받아 패키지 설치 프로그램으로 설치하세요." \
+          gh release view latest >/dev/null 2>&1 || gh release create latest --title "기억의 서랍 V2.0" --notes "Android 설치용 최신 APK입니다." --latest
+          gh release upload latest memory-drawer.apk --clobber
+          gh release edit latest \
+            --title "기억의 서랍 V2.0" \
+            --notes "날짜와 주제(개인·가족·사회)별 기록실을 갖춘 기억의 서랍 V2.0입니다. memory-drawer.apk를 내려받아 패키지 설치 프로그램으로 설치하세요." \
             --latest
